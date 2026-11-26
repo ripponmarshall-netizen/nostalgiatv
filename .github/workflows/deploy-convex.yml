@@ -1,0 +1,26 @@
+name: Deploy Convex backend
+
+# Runs whenever you change the backend (anything in convex/) on main,
+# or manually from the Actions tab ("Run workflow").
+on:
+  push:
+    branches: [main]
+    paths:
+      - "convex/**"
+      - "package.json"
+      - ".github/workflows/deploy-convex.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      # Generates convex/_generated, typechecks, and pushes schema + functions.
+      - run: npx convex deploy
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}

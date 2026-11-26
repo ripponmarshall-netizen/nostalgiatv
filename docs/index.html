@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yaad TV — Jamaican nostalgia, live</title>
+<meta name="theme-color" content="#1b130c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --wood: #3a2616; --wood-dark: #1b130c; --plastic: #2a2a2a;
+    --osd: #7CFF6B; --amber: #ffb000; --cream: #f3e6c8; --red: #d2362b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: radial-gradient(circle at 50% 0%, #3b2a1c, var(--wood-dark) 70%); color: var(--cream);
+    font-family: "VT323", ui-monospace, Menlo, monospace; font-size: 20px; min-height: 100%; }
+  body { padding: env(safe-area-inset-top) 12px calc(24px + env(safe-area-inset-bottom)); }
+  h1 { font-weight: normal; letter-spacing: 2px; margin: 14px 0 6px; text-align: center; font-size: 34px; color: var(--amber);
+    text-shadow: 0 0 8px rgba(255,176,0,.5); }
+  .tag { text-align: center; opacity: .75; margin: 0 0 14px; }
+
+  /* ---- the telly ---- */
+  .tv { max-width: 720px; margin: 0 auto; padding: 18px 18px 14px; border-radius: 26px;
+    background: linear-gradient(160deg, #5b3b22, var(--wood) 40%, #24170d); box-shadow: 0 20px 40px #000a, inset 0 2px 0 #ffffff22; }
+  .bezel { background: var(--plastic); border-radius: 22px; padding: 14px; box-shadow: inset 0 0 0 3px #111, inset 0 6px 14px #000; }
+  .screen { position: relative; aspect-ratio: 4 / 3; border-radius: 18px / 26px; overflow: hidden; background: #000;
+    box-shadow: inset 0 0 40px #000; }
+  .screen iframe, #player { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  #static { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; display: none; }
+  .scan { position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,.18) 0 2px, transparent 2px 4px),
+                radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55)); }
+  .osd { position: absolute; top: 10px; right: 14px; color: var(--osd); font-size: 34px; text-shadow: 2px 2px 0 #000; display: none; }
+  .lower { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px; background: linear-gradient(transparent, #000c);
+    color: #fff; font-size: 22px; text-shadow: 1px 1px 0 #000; transition: opacity .6s; opacity: 0; }
+  .lower small { color: var(--amber); }
+  .offair { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
+    color: #fff; font-size: 26px; text-shadow: 2px 2px 0 #000; padding: 20px; }
+  .power { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #000e; z-index: 5; gap: 10px; }
+  .power button { font-size: 28px; }
+
+  .controls { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+  button { font-family: inherit; font-size: 22px; color: var(--cream); background: linear-gradient(#4a4a4a, #222);
+    border: 1px solid #000; border-radius: 10px; padding: 8px 14px; box-shadow: inset 0 1px 0 #ffffff33, 0 2px 0 #000;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:active { transform: translateY(1px); box-shadow: inset 0 1px 0 #ffffff22; }
+  button.on { color: var(--osd); text-shadow: 0 0 6px var(--osd); }
+  button.big { background: linear-gradient(#e04a3e, #9a2018); }
+  button:disabled { opacity: .45; }
+  .chlist { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+  .panel { max-width: 720px; margin: 16px auto 0; background: #0006; border: 1px solid #ffffff1a; border-radius: 14px; padding: 12px 14px; }
+  .panel h2 { margin: 0 0 8px; font-weight: normal; color: var(--amber); font-size: 26px; }
+  ol { margin: 0; padding-left: 26px; } li { margin: 2px 0; }
+  .muted { opacity: .65; }
+  label { display: block; margin: 8px 0 2px; }
+  input, select { width: 100%; font-family: inherit; font-size: 20px; padding: 8px; border-radius: 8px; border: 1px solid #000;
+    background: #f3e6c8; color: #1b130c; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #msg { min-height: 1.2em; margin-top: 8px; color: var(--osd); }
+  footer { max-width: 720px; margin: 18px auto 0; font-size: 16px; opacity: .6; text-align: center; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+  <h1>YAAD TV</h1>
+  <p class="tag">Old-time Jamaican TV. Everybody watching the same thing, same time.</p>
+
+  <div class="tv">
+    <div class="bezel">
+      <div class="screen">
+        <div id="player"></div>
+        <canvas id="static" width="160" height="120"></canvas>
+        <div class="offair" id="offair"></div>
+        <div class="osd" id="osd"></div>
+        <div class="lower" id="lower"></div>
+        <div class="scan"></div>
+        <div class="power" id="power">
+          <div>📺</div>
+          <button class="big" id="powerBtn">Turn on the TV</button>
+          <div class="muted" style="font-size:16px">Sound needs one tap on iPhone</div>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="chDown" aria-label="Channel down">CH ▼</button>
+      <button id="chUp" aria-label="Channel up">CH ▲</button>
+      <button id="likeBtn" disabled>👍 Mi memba dis!</button>
+      <button id="muteBtn" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="controls chlist" id="chlist"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Top 10 · Most remembered</h2>
+    <ol id="top"><li class="muted">Loading…</li></ol>
+  </div>
+
+  <div class="panel">
+    <h2>Send in a clip</h2>
+    <div class="muted" style="font-size:17px">Paste a YouTube link to an old Jamaican ad, show, news moment or music video. It goes on air after a quick check.</div>
+    <form id="submitForm">
+      <label for="url">YouTube link</label>
+      <input id="url" required placeholder="https://youtu.be/…" inputmode="url" autocomplete="off">
+      <label for="title">What is it?</label>
+      <input id="title" required maxlength="120" placeholder="e.g. Lasco Mackerel jingle">
+      <div class="row">
+        <div><label for="channel">Channel</label><select id="channel"></select></div>
+        <div><label for="decade">Decade</label>
+          <select id="decade"><option value="">Not sure</option><option>70s</option><option>80s</option><option selected>90s</option><option>2000s</option></select></div>
+      </div>
+      <div style="margin-top:12px"><button type="submit">📼 Send it in</button></div>
+      <div id="msg"></div>
+    </form>
+  </div>
+
+  <footer>
+    Fan-made nostalgia site. Every clip is an embedded YouTube video, nothing is hosted here.
+    Is a clip yours and you want it gone? <a href="mailto:YOUR-EMAIL@example.com?subject=Yaad%20TV%20takedown">Tell me</a> and it's gone.
+  </footer>
+
+<script src="config.js"></script>
+<script src="https://unpkg.com/convex@1.51.0/dist/browser.bundle.js"></script>
+<script>
+(() => {
+  // ---------- setup ----------
+  const client = new convex.ConvexClient(window.RETRO_TV.CONVEX_URL);
+  const api = convex.anyApi;
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+
+  // ---------- shared clock ----------
+  // Ask the server for its time a few times; keep the sample with the lowest round trip.
+  let clockOffset = 0, bestRtt = Infinity;
+  async function syncClock() {
+    for (let i = 0; i < 3; i++) {
+      try {
+        const t0 = Date.now();
+        const server = await client.mutation(api.tv.serverTime, {});
+        const t1 = Date.now();
+        if (t1 - t0 < bestRtt) { bestRtt = t1 - t0; clockOffset = server - (t0 + t1) / 2; }
+      } catch (e) { console.warn("clock sync failed", e); }
+    }
+  }
+  const serverNow = () => Date.now() + clockOffset;
+
+  // Same maths as the backend: where in the loop are we right now?
+  function locate(sched, now) {
+    const total = sched.clips.reduce((s, c) => s + c.durationSec, 0);
+    if (total <= 0) return null;
+    let t = (((now - sched.epoch) / 1000) % total + total) % total;
+    for (let i = 0; i < sched.clips.length; i++) {
+      const d = sched.clips[i].durationSec;
+      if (t < d) return { clip: sched.clips[i], offset: t, remaining: d - t };
+      t -= d;
+    }
+    return { clip: sched.clips[0], offset: 0, remaining: sched.clips[0].durationSec };
+  }
+
+  // ---------- static ----------
+  const canvas = $("static"), g = canvas.getContext("2d");
+  let staticOn = false;
+  function drawStatic() {
+    if (!staticOn) return;
+    const img = g.createImageData(canvas.width, canvas.height);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = Math.random() * 255 | 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    requestAnimationFrame(drawStatic);
+  }
+  function setStatic(on) {
+    if (on === staticOn) return;
+    staticOn = on; canvas.style.display = on ? "block" : "none";
+    if (on) requestAnimationFrame(drawStatic);
+  }
+  let staticUntil = 0;
+  const flashStatic = (ms) => { staticUntil = Date.now() + ms; setStatic(true); };
+
+  // ---------- OSD ----------
+  let osdTimer, lowerTimer;
+  function showOSD(text) {
+    const el = $("osd"); el.textContent = text; el.style.display = "block";
+    clearTimeout(osdTimer); osdTimer = setTimeout(() => (el.style.display = "none"), 3000);
+  }
+  function showLower(clip) {
+    const el = $("lower");
+    el.innerHTML = "";
+    const name = document.createElement("div"); name.textContent = clip.title;
+    const meta = document.createElement("small"); meta.textContent = [currentChannel?.name, clip.decade].filter(Boolean).join(" · ");
+    el.append(name, meta); el.style.opacity = 1;
+    clearTimeout(lowerTimer); lowerTimer = setTimeout(() => (el.style.opacity = 0), 7000);
+  }
+  function setOffAir(text) {
+    const el = $("offair"); el.textContent = text || ""; el.style.display = text ? "flex" : "none";
+  }
+
+  // ---------- YouTube player ----------
+  let player = null, playerReady = false, playingId = null, failedId = null, lastSeek = 0, poweredOn = false;
+  const yt = document.createElement("script"); yt.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(yt);
+  window.onYouTubeIframeAPIReady = () => {
+    player = new YT.Player("player", {
+      playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0, iv_load_policy: 3, fs: 0, mute: 1, autoplay: 1 },
+      events: {
+        onReady: () => { playerReady = true; player.mute(); },
+        onError: () => {
+          // 2 bad id · 5 html5 error · 100 removed/private · 101/150 embedding blocked
+          if (!playingId) return;
+          failedId = playingId; setStatic(true);
+          const key = "fail:" + playingId;
+          if (!store.get(key)) { store.set(key, "1"); client.mutation(api.tv.reportFail, { clipId: playingId }).catch(() => {}); }
+        },
+      },
+    });
+  };
+
+  // ---------- channels ----------
+  let channels = [], currentChannel = null, schedule = null, unsubSchedule = null;
+  function tune(ch) {
+    if (!ch) return;
+    currentChannel = ch; schedule = null; playingId = null; failedId = null;
+    store.set("lastChannel", ch.slug);
+    if (unsubSchedule) unsubSchedule();
+    // Reactive subscription: when a clip is approved or pulled, every viewer gets the new loop instantly.
+    unsubSchedule = client.onUpdate(api.tv.schedule, { channel: ch.slug }, (s) => { if (currentChannel === ch) schedule = s; });
+    flashStatic(700);
+    showOSD("CH " + String(ch.number).padStart(2, "0"));
+    renderChannelButtons();
+  }
+  function step(dir) {
+    if (!channels.length) return;
+    const i = Math.max(0, channels.findIndex((c) => c.slug === currentChannel?.slug));
+    tune(channels[(i + dir + channels.length) % channels.length]);
+  }
+  function renderChannelButtons() {
+    const box = $("chlist"); box.innerHTML = "";
+    for (const ch of channels) {
+      const b = document.createElement("button");
+      b.textContent = String(ch.number).padStart(2, "0") + " " + ch.name;
+      if (ch.slug === currentChannel?.slug) b.className = "on";
+      b.onclick = () => tune(ch);
+      box.appendChild(b);
+    }
+    const sel = $("channel");
+    if (!sel.options.length) for (const ch of channels) sel.add(new Option(ch.name, ch.slug));
+  }
+  client.onUpdate(api.tv.channels, {}, (list) => {
+    channels = list;
+    if (!currentChannel && list.length) {
+      tune(list.find((c) => c.slug === store.get("lastChannel")) || list[0]);
+    } else renderChannelButtons();
+    if (!list.length) setOffAir("No channels yet. Ask the admin to switch on the transmitter.");
+  });
+
+  // ---------- the loop: keep this telly in step with everyone else ----------
+  function tick() {
+    if (Date.now() > staticUntil && failedId === null) setStatic(false);
+    if (!playerReady || !schedule) return;
+    const pos = locate(schedule, serverNow());
+    if (!pos) { setOffAir("Off air. Send in a clip for this channel below!"); setStatic(true); $("likeBtn").disabled = true; return; }
+    setOffAir("");
+
+    if (pos.clip.id !== playingId) {
+      playingId = pos.clip.id; failedId = null;
+      player.loadVideoById({ videoId: pos.clip.youtubeId, startSeconds: Math.floor(pos.offset) });
+      showLower(pos.clip);
+      $("likeBtn").disabled = !!store.get("like:" + pos.clip.id);
+      return;
+    }
+    if (failedId === playingId) return; // static until the next clip's slot
+
+    const state = player.getPlayerState();
+    if (state === YT.PlayerState.PAUSED || state === YT.PlayerState.CUED) player.playVideo(); // it's live TV, no pausing
+    if (state === YT.PlayerState.ENDED) setStatic(true); // measured length ran a touch long
+    if (state === YT.PlayerState.PLAYING && Date.now() - lastSeek > 4000) {
+      const drift = player.getCurrentTime() - pos.offset;
+      if (Math.abs(drift) > 2.5) { player.seekTo(pos.offset, true); lastSeek = Date.now(); }
+    }
+  }
+  setInterval(tick, 500);
+
+  // ---------- buttons ----------
+  $("powerBtn").onclick = () => {
+    poweredOn = true; $("power").style.display = "none";
+    if (playerReady) { player.unMute(); player.setVolume(100); player.playVideo(); }
+    $("muteBtn").textContent = "🔊";
+  };
+  $("muteBtn").onclick = () => {
+    if (!playerReady) return;
+    if (player.isMuted()) { player.unMute(); player.playVideo(); $("muteBtn").textContent = "🔊"; }
+    else { player.mute(); $("muteBtn").textContent = "🔇"; }
+  };
+  $("chUp").onclick = () => step(1);
+  $("chDown").onclick = () => step(-1);
+  $("likeBtn").onclick = async () => {
+    if (!playingId) return;
+    store.set("like:" + playingId, "1"); $("likeBtn").disabled = true;
+    try { await client.mutation(api.tv.like, { clipId: playingId }); } catch {}
+  };
+
+  // ---------- top 10 ----------
+  client.onUpdate(api.tv.topClips, {}, (rows) => {
+    const ol = $("top"); ol.innerHTML = "";
+    if (!rows.length) { ol.innerHTML = '<li class="muted">Nothing yet. Be the first to say "mi memba dis!"</li>'; return; }
+    for (const r of rows) {
+      const li = document.createElement("li");
+      li.textContent = `${r.title} (${r.likes} 👍)`;
+      ol.appendChild(li);
+    }
+  });
+
+  // ---------- submissions ----------
+  $("submitForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const msg = $("msg"); msg.style.color = "var(--osd)"; msg.textContent = "Sending…";
+    try {
+      msg.textContent = await client.mutation(api.tv.submit, {
+        url: $("url").value, title: $("title").value, channel: $("channel").value,
+        decade: $("decade").value || undefined,
+      });
+      $("url").value = ""; $("title").value = "";
+    } catch (err) {
+      msg.style.color = "var(--red)";
+      msg.textContent = (err && err.data) || "Couldn't send that. Try again.";
+    }
+  };
+
+  syncClock();
+  setInterval(syncClock, 5 * 60 * 1000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "yaad-tv",
+  "private": true,
+  "description": "Synced retro Jamaican TV channels. Convex backend, no-build static frontend in docs/.",
+  "dependencies": {
+    "convex": "^1.51.0"
+  }
+}
